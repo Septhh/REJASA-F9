@@ -13,25 +13,25 @@ export const RoomStatusGrid: React.FC<RoomStatusGridProps> = ({
   onOpenIncidentForRoom,
 }) => {
   return (
-    <div className="mb-6">
+    <div className="mb-8">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#9E1B32] text-[20px]">sensors</span>
-          <h2 className="font-['Plus_Jakarta_Sans'] text-base sm:text-lg font-bold text-[#131b2e] tracking-tight">
-            Status Operasional Bilik Laboratorium
+          <span className="material-symbols-outlined text-[#00685f] text-[22px]">sensors</span>
+          <h2 className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#131b2e]">
+            Live Status Bilik Laboratorium
           </h2>
-          <span className="text-xs text-slate-400 hidden md:inline font-mono">
-            (Node sync realtime via QR Check-In)
+          <span className="text-xs text-slate-400 hidden md:inline">
+            (Otomatis refresh via QR Check-In Guru)
           </span>
         </div>
-        <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-[2px] w-fit">
+        <span className="font-mono text-xs font-semibold text-[#00685f] bg-[#00685f]/10 px-3 py-1 rounded-full w-fit">
           SOP-LAB-019 REV 4
         </span>
       </div>
 
       {/* 5 Rooms Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {rooms.map((room) => {
           const isProblem = room.statusType === 'problem';
           const isSuccess = room.statusType === 'reviewed';
@@ -43,50 +43,51 @@ export const RoomStatusGrid: React.FC<RoomStatusGridProps> = ({
               key={room.id}
               id={`room-card-${room.code.toLowerCase()}`}
               onClick={() => onSelectRoom && onSelectRoom(room)}
-              className={`bg-white rounded-[2px] p-4 shadow-xs border transition-colors flex flex-col justify-between ${
-                isProblem
-                  ? 'border-rose-300 hover:border-rose-400'
-                  : 'border-slate-300 hover:border-slate-400'
-              } ${isStandby ? 'opacity-90' : ''}`}
+              className={`bg-white rounded-xl p-4 shadow-sm border border-[#E2E8F0] relative overflow-hidden flex flex-col justify-between group hover:-translate-y-0.5 transition-all ${
+                isStandby ? 'opacity-90 hover:opacity-100' : ''
+              }`}
             >
+              {/* Background atmospheric accent corner */}
+              {isProblem && (
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#E11D48]/5 rounded-bl-full pointer-events-none" />
+              )}
+              {isSuccess && (
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#059669]/5 rounded-bl-full pointer-events-none" />
+              )}
+              {isActive && (
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#00685f]/5 rounded-bl-full pointer-events-none" />
+              )}
+
               <div>
                 {/* Room top badges */}
                 <div className="flex items-center justify-between mb-2.5">
                   <span
-                    className={`px-1.5 py-0.5 rounded-[2px] font-mono text-[11px] font-bold border ${
-                      room.code === 'BIO'
-                        ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                        : room.code === 'FIS'
-                        ? 'bg-sky-50 text-sky-900 border-sky-200'
-                        : room.code === 'KIM'
-                        ? 'bg-teal-50 text-teal-900 border-teal-200'
-                        : 'bg-slate-50 text-slate-800 border-slate-200'
-                    }`}
+                    className={`px-2 py-0.5 rounded font-mono text-xs font-bold ${room.badgeBg} ${room.badgeColor}`}
                   >
                     {room.badgeCode}
                   </span>
 
                   {isProblem && (
-                    <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-rose-700 px-1.5 py-0.5 rounded-[2px] bg-rose-50 border border-rose-200">
-                      <span className="w-1.5 h-1.5 bg-rose-600"></span>
-                      INSIDEN
+                    <span className="flex items-center gap-1 text-xs font-bold text-[#E11D48] px-2 py-0.5 rounded bg-[#FFF1F2]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#E11D48] animate-ping"></span>
+                      Insiden
                     </span>
                   )}
                   {isSuccess && (
-                    <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-700 px-1.5 py-0.5 rounded-[2px] bg-emerald-50 border border-emerald-200">
-                      <span className="w-1.5 h-1.5 bg-emerald-600"></span>
-                      BERJALAN
+                    <span className="flex items-center gap-1 text-xs font-bold text-[#059669] px-2 py-0.5 rounded bg-[#ECFDF5]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#059669]"></span>
+                      Berjalan
                     </span>
                   )}
                   {isActive && (
-                    <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-[#9E1B32] px-1.5 py-0.5 rounded-[2px] bg-[#FFF1F2] border border-[#FECDD3]">
-                      <span className="w-1.5 h-1.5 bg-[#9E1B32]"></span>
-                      PRAKTIKUM
+                    <span className="flex items-center gap-1 text-xs font-bold text-[#00685f] px-2 py-0.5 rounded bg-[#89f5e7]/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00685f] animate-pulse"></span>
+                      Praktikum
                     </span>
                   )}
                   {isStandby && (
-                    <span className="text-[11px] font-mono font-bold text-slate-500 px-1.5 py-0.5 rounded-[2px] bg-slate-100 border border-slate-200">
-                      STANDBY
+                    <span className="text-xs font-bold text-slate-500 px-2 py-0.5 rounded bg-[#e2e7ff]/70">
+                      {room.status}
                     </span>
                   )}
                 </div>
@@ -128,12 +129,12 @@ export const RoomStatusGrid: React.FC<RoomStatusGridProps> = ({
 
               {/* Bottom footer status strip */}
               <div
-                className={`mt-3 pt-2 -mx-4 -mb-4 p-2.5 flex items-center justify-between border-t ${
+                className={`mt-3 pt-2 -mx-4 -mb-4 p-3 rounded-b-xl flex items-center justify-between border-t border-slate-100 ${
                   isProblem
-                    ? 'bg-rose-50/80 hover:bg-rose-100 border-rose-200 cursor-pointer'
+                    ? 'bg-[#FFF1F2]/60 hover:bg-[#FFF1F2] cursor-pointer'
                     : isSuccess
-                    ? 'bg-emerald-50/50 border-slate-200'
-                    : 'bg-slate-50 border-slate-200'
+                    ? 'bg-[#ECFDF5]/50'
+                    : 'bg-slate-50'
                 }`}
                 onClick={(e) => {
                   if (isProblem && onOpenIncidentForRoom) {
@@ -145,11 +146,11 @@ export const RoomStatusGrid: React.FC<RoomStatusGridProps> = ({
                 <span
                   className={`text-xs font-semibold truncate flex items-center gap-1 ${
                     isProblem
-                      ? 'text-rose-700'
+                      ? 'text-[#E11D48]'
                       : isSuccess
-                      ? 'text-emerald-700'
+                      ? 'text-[#059669]'
                       : isActive
-                      ? 'text-slate-800'
+                      ? 'text-slate-700'
                       : 'text-slate-500 font-medium'
                   }`}
                 >
@@ -171,19 +172,19 @@ export const RoomStatusGrid: React.FC<RoomStatusGridProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (onSelectRoom) onSelectRoom(room);
+                      alert(`${room.actionLabel} dikonfirmasi untuk ${room.name}`);
                     }}
-                    className="text-[#9E1B32] text-xs font-mono font-bold hover:underline ml-1"
+                    className="text-[#00685f] text-xs font-bold hover:underline ml-1"
                   >
-                    [{room.actionLabel}]
+                    {room.actionLabel}
                   </button>
                 ) : (
                   <span
-                    className={`material-symbols-outlined text-[16px] ${
+                    className={`material-symbols-outlined text-[18px] ${
                       isProblem
-                        ? 'text-rose-600'
+                        ? 'text-[#E11D48]'
                         : isSuccess
-                        ? 'text-emerald-600'
+                        ? 'text-[#059669]'
                         : 'text-slate-400'
                     }`}
                   >

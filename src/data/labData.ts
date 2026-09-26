@@ -8,14 +8,13 @@ export const INITIAL_ROOMS: LabRoom[] = [
     badgeBg: 'bg-emerald-950',
     badgeColor: 'text-[#89f5e7]',
     name: 'Lab Biologi Terpadu',
-    status: 'Standby',
-    statusType: 'standby',
-    className: 'Ruangan siap digunakan.',
-    topic: 'Belum ada praktikum aktif',
-    teacher: 'Jadwal Terbuka',
-    statusDetail: 'Kondisi Standby',
-    statusDetailType: 'info',
-    workstations: 36,
+    status: 'Insiden',
+    statusType: 'problem',
+    className: 'Kelas XI IPA 1',
+    topic: 'Pengamatan Jaringan Sel',
+    teacher: 'Pak Budi Santoso, M.Pd',
+    statusDetail: 'BIO-03 Lensa Retak',
+    statusDetailType: 'problem',
   },
   {
     id: 'room-fis',
@@ -24,14 +23,13 @@ export const INITIAL_ROOMS: LabRoom[] = [
     badgeBg: 'bg-sky-950',
     badgeColor: 'text-sky-200',
     name: 'Lab Fisika Modern',
-    status: 'Standby',
-    statusType: 'standby',
-    className: 'Ruangan siap digunakan.',
-    topic: 'Belum ada praktikum aktif',
-    teacher: 'Jadwal Terbuka',
-    statusDetail: 'Kondisi Standby',
-    statusDetailType: 'info',
-    workstations: 36,
+    status: 'Berjalan',
+    statusType: 'reviewed',
+    className: 'Kelas X-2',
+    topic: 'Rangkaian Hukum Ohm',
+    teacher: 'Bu Ratna Sari, S.Si',
+    statusDetail: 'Peralatan Lengkap & Aman',
+    statusDetailType: 'success',
   },
   {
     id: 'room-kim',
@@ -40,14 +38,13 @@ export const INITIAL_ROOMS: LabRoom[] = [
     badgeBg: 'bg-teal-950',
     badgeColor: 'text-[#89f5e7]',
     name: 'Lab Kimia Anorganik',
-    status: 'Standby',
-    statusType: 'standby',
-    className: 'Ruangan siap digunakan.',
-    topic: 'Belum ada praktikum aktif',
-    teacher: 'Jadwal Terbuka',
-    statusDetail: 'Kondisi Standby',
-    statusDetailType: 'info',
-    workstations: 36,
+    status: 'Praktikum',
+    statusType: 'active',
+    className: 'Kelas XII IPA 3',
+    topic: 'Titrasi Asam Basa HCl-NaOH',
+    teacher: 'Pak Anton Wijaya, M.Sc',
+    statusDetail: 'Selesai dlm 35 Menit',
+    statusDetailType: 'timer',
   },
   {
     id: 'room-com',
@@ -59,10 +56,11 @@ export const INITIAL_ROOMS: LabRoom[] = [
     status: 'Standby',
     statusType: 'standby',
     className: 'Ruangan siap digunakan.',
-    topic: 'Belum ada praktikum aktif',
-    teacher: 'Jadwal Terbuka',
-    statusDetail: 'Kondisi Standby',
+    topic: 'Simulasi PhET Fisika XI IPA 2',
+    teacher: 'Sesi Berikutnya: 13.00 WIB',
+    statusDetail: '36 Workstation Siap',
     statusDetailType: 'info',
+    actionLabel: 'Jadwal',
     workstations: 36,
   },
   {
@@ -72,23 +70,31 @@ export const INITIAL_ROOMS: LabRoom[] = [
     badgeBg: 'bg-slate-800',
     badgeColor: 'text-slate-200',
     name: 'Smartclass & Bahasa',
-    status: 'Standby',
+    status: 'Sterilisasi',
     statusType: 'standby',
-    className: 'Ruangan siap digunakan.',
-    topic: 'Belum ada praktikum aktif',
-    teacher: 'Jadwal Terbuka',
-    statusDetail: 'Kondisi Standby',
+    className: 'Maintenance & kebersihan usai.',
+    topic: 'Sanitasi Headset Audio OK',
+    teacher: 'Siap Digunakan Sesi Siang',
+    statusDetail: 'Siap Booking',
     statusDetailType: 'info',
-    workstations: 36,
+    actionLabel: 'Kunci',
   },
 ];
 
-// Clean Zero State: No mock journals or incidents
-export const INITIAL_JOURNALS: JournalEntry[] = [];
-export const INITIAL_INCIDENTS: IncidentItem[] = [];
+export const LAB_MONTHLY_STATS: LabUsageStat[] = [
+  { labName: 'Lab Kimia Anorganik', sessions: 42, percentage: 92, color: 'bg-primary' },
+  { labName: 'Lab Biologi Terpadu', sessions: 38, percentage: 84, color: 'bg-primary' },
+  { labName: 'Lab Fisika Modern', sessions: 29, percentage: 65, color: 'bg-secondary' },
+  { labName: 'Lab Komputer Sains', sessions: 14, percentage: 31, color: 'bg-slate-400' },
+];
 
-export const LAB_MONTHLY_STATS: LabUsageStat[] = [];
-export const WEEKLY_HOURS_ALLOCATION: DayAllocation[] = [];
+export const WEEKLY_HOURS_ALLOCATION: DayAllocation[] = [
+  { day: 'Sen', hours: 7, details: 'BIO: 3j, KIM: 2j, FIS: 2j' },
+  { day: 'Sel', hours: 9, details: 'KIM: 4j, FIS: 3j, COM: 2j' },
+  { day: 'Rab', hours: 8, details: 'BIO: 4j, KIM: 2j, FIS: 2j' },
+  { day: 'Kam (Now)', hours: 10, isToday: true, details: 'BIO: 4j, KIM: 3j, FIS: 3j' },
+  { day: 'Jum', hours: 5, details: 'KIM: 3j, FIS: 2j' },
+];
 
 /**
  * Helper to export Journal records to standard CSV

@@ -1,245 +1,208 @@
-import React, { useState, useEffect } from 'react';
-import { LabCode } from '../types';
+import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
+import { api } from '../lib/api';
+import { Lab, QRCodeInfo } from '../types';
 
 interface CreateQRModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProceedToJournal?: (labCode: LabCode) => void;
+  labs: Lab[];
+  /** Lab yang dipilih saat modal dibuka (opsional). */
+  initialLabId?: number | null;
+  /** Dipanggil setelah QR diterbitkan/diperbarui (mis. untuk refresh daftar). */
+  onChanged?: () => void;
+  onToast?: (msg: string) => void;
 }
 
-export const CreateQRModal: React.FC<CreateQRModalProps> = ({
-  isOpen,
-  onClose,
-  onProceedToJournal,
-}) => {
-  const [selectedLab, setSelectedLab] = useState<LabCode>('BIO');
-  const [labDetails, setLabDetails] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const labList: Array<{ code: LabCode; name: string; icon: string }> = [
-    { code: 'BIO', name: 'Lab Biologi Terpadu', icon: 'biotech' },
-    { code: 'FIS', name: 'Lab Fisika Modern', icon: 'bolt' },
-    { code: 'KIM', name: 'Lab Kimia Anorganik', icon: 'science' },
-    { code: 'COM', name: 'Lab Komputer Sains', icon: 'computer' },
-    { code: 'BSM', name: 'Smartclass & Bahasa', icon: 'translate' },
-  ];
+// QR hanya mengidentifikasi laboratorium. Membuat QR TIDAK membuat jurnal.
+export const CreateQRModal: React.FC<CreateQRModalProps> = ({ isOpen, onClose, labs, initialLabId, onChanged, onToast }) => {
+  const [labId, setLabId] = useState<number | null>(null);
+  const [qr, setQr] = useState<QRCodeInfo | null>(null);
+  const [qrImage, setQrImage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isOpen) {
-      loadLabQR(selectedLab);
-    }
-  }, [isOpen, selectedLab]);
+    if (isOpen) setLabId(initialLabId ?? labs[0]?.id ?? null);
+  }, [isOpen, initialLabId, labs]);
 
-  const loadLabQR = async (code: LabCode) => {
-    setIsLoading(true);
-    try {
-      // Step 1 & 2: Identify Lab & Fetch Schedule (Strictly NO inventory & NO journal creation)
-      const res = await fetch(`/api/qr/QR-LAB-${code}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLabDetails(data);
-      } else {
-        // Fallback info
-        const labItem = labList.find(l => l.code === code);
-        setLabDetails({
-          valid: true,
-          token: `QR-LAB-${code}`,
-          lab: {
-            code,
-            name: labItem?.name || `Laboratorium ${code}`,
-            schoolName: 'SMAN 3 Salatiga',
-            status: 'Standby',
-            statusDetail: 'Ruangan siap digunakan.',
-            workstations: 36,
-          },
-          schedules: [],
-        });
-      }
-    } catch (e) {
-      console.warn('QR load error:', e);
-    } finally {
-      setIsLoading(false);
+  // Muat QR aktif untuk lab terpilih.
+  useEffect(() => {
+    if (!isOpen || labId == null) return;
+    let alive = true;
+    setLoading(true);
+    setError('');
+    api
+      .get<{ qrCodes: QRCodeInfo[] }>(`/qr?labId=${labId}`)
+      .then((r) => alive && setQr(r.qrCodes[0] ?? null))
+      .catch((e) => alive && setError(e?.message || 'Gagal memuat QR.'))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [isOpen, labId]);
+
+  // Render QR nyata dari URL.
+  useEffect(() => {
+    if (!qr) {
+      setQrImage('');
+      return;
     }
-  };
+    let alive = true;
+    QRCode.toDataURL(qr.url, { width: 512, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#00685f', light: '#ffffff' } })
+      .then((d) => alive && setQrImage(d))
+      .catch(() => alive && setError('Gagal membuat gambar QR.'));
+    return () => {
+      alive = false;
+    };
+  }, [qr]);
 
   if (!isOpen) return null;
 
-  const currentToken = `QR-LAB-${selectedLab}`;
+  const lab = labs.find((l) => l.id === labId) ?? null;
 
-  const handleCopyLink = () => {
-    navigator.clipboard?.writeText?.(currentToken);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const generate = async () => {
+    if (labId == null) return;
+    if (qr && !window.confirm('QR lama untuk laboratorium ini akan dicabut dan tidak dapat dipakai lagi. Lanjutkan?')) return;
+    setBusy(true);
+    setError('');
+    try {
+      const r = await api.post<{ qr: QRCodeInfo }>('/qr', { labId });
+      setQr(r.qr);
+      onChanged?.();
+      onToast?.(`QR baru diterbitkan untuk ${r.qr.labName}.`);
+    } catch (e: any) {
+      setError(e?.message || 'Gagal menerbitkan QR.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyLink = async () => {
+    if (!qr) return;
+    try {
+      await navigator.clipboard.writeText(qr.url);
+      onToast?.('Tautan QR laboratorium disalin.');
+    } catch {
+      window.prompt('Salin tautan berikut:', qr.url);
+    }
+  };
+
+  const download = () => {
+    if (!qrImage || !lab) return;
+    const a = document.createElement('a');
+    a.href = qrImage;
+    a.download = `qr-${lab.code.toLowerCase()}.png`;
+    a.click();
+  };
+
+  const print = () => {
+    if (!qrImage || !lab) return;
+    const w = window.open('', '_blank', 'width=480,height=640');
+    if (!w) return;
+    w.document.write(
+      `<html><head><title>QR ${lab.name}</title></head><body style="font-family:sans-serif;text-align:center;padding:32px">
+       <h2 style="margin:0">${lab.name.replace(/</g, '&lt;')}</h2><p style="margin:4px 0 16px">${lab.school}</p>
+       <img src="${qrImage}" style="width:320px;height:320px" /><p style="font-size:14px">Scan untuk mengisi jurnal laboratorium</p>
+       <script>window.onload=()=>window.print()</script></body></html>`,
+    );
+    w.document.close();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 p-6 relative max-h-[92vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 p-6 sm:p-7 relative max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-[#00685f]/10 text-[#00685f] flex items-center justify-center">
               <span className="material-symbols-outlined text-[24px]">qr_code_2</span>
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                QR Pintu Bilik Laboratorium
-              </h3>
-              <p className="text-xs text-slate-500 font-mono">
-                Identifikasi Lab &amp; Jadwal Penggunaan
-              </p>
+              <h3 className="font-['Plus_Jakarta_Sans'] text-lg font-bold text-[#131b2e]">QR Laboratorium</h3>
+              <span className="text-xs text-slate-500">Pintu masuk guru ke alur pengisian jurnal</span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
+            aria-label="Tutup"
           >
-            <span className="material-symbols-outlined text-[18px]">close</span>
+            <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
-        {/* Lab Selector Buttons */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
-          {labList.map((lab) => (
-            <button
-              key={lab.code}
-              onClick={() => setSelectedLab(lab.code)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shrink-0 flex items-center gap-1.5 ${
-                selectedLab === lab.code
-                  ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[15px]">{lab.icon}</span>
-              <span>{lab.code}</span>
-            </button>
-          ))}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-[#131b2e] mb-1">Pilih Laboratorium</label>
+          <select
+            value={labId ?? ''}
+            onChange={(e) => setLabId(Number(e.target.value))}
+            className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#131b2e] focus:ring-2 focus:ring-[#00685f] focus:outline-none"
+          >
+            {labs.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.code} • {l.name}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* QR Code Card */}
-        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center mb-4">
-          <div className="w-48 h-48 bg-white rounded-xl p-3 border border-slate-300 shadow-xs flex items-center justify-center">
-            <svg viewBox="0 0 100 100" className="w-full h-full">
-              {/* Corner position squares */}
-              <rect x="5" y="5" width="25" height="25" fill="#064E3B" rx="2" />
-              <rect x="9" y="9" width="17" height="17" fill="white" rx="1" />
-              <rect x="13" y="13" width="9" height="9" fill="#064E3B" rx="1" />
-
-              <rect x="70" y="5" width="25" height="25" fill="#064E3B" rx="2" />
-              <rect x="74" y="9" width="17" height="17" fill="white" rx="1" />
-              <rect x="78" y="13" width="9" height="9" fill="#064E3B" rx="1" />
-
-              <rect x="5" y="70" width="25" height="25" fill="#064E3B" rx="2" />
-              <rect x="9" y="74" width="17" height="17" fill="white" rx="1" />
-              <rect x="13" y="78" width="9" height="9" fill="#064E3B" rx="1" />
-
-              {/* Data modules */}
-              <rect x="35" y="10" width="6" height="6" fill="#131b2e" />
-              <rect x="45" y="12" width="8" height="5" fill="#131b2e" />
-              <rect x="58" y="8" width="6" height="7" fill="#131b2e" />
-              <rect x="12" y="36" width="7" height="7" fill="#131b2e" />
-              <rect x="25" y="42" width="6" height="5" fill="#131b2e" />
-              <rect x="36" y="32" width="8" height="8" fill="#047857" />
-              <rect x="48" y="40" width="7" height="6" fill="#131b2e" />
-              <rect x="62" y="35" width="6" height="9" fill="#131b2e" />
-              <rect x="74" y="40" width="9" height="6" fill="#131b2e" />
-              <rect x="88" y="45" width="6" height="7" fill="#131b2e" />
-              <rect x="36" y="50" width="9" height="6" fill="#131b2e" />
-              <rect x="50" y="52" width="6" height="8" fill="#047857" />
-              <rect x="60" y="55" width="8" height="5" fill="#131b2e" />
-              <rect x="35" y="65" width="7" height="7" fill="#131b2e" />
-              <rect x="48" y="72" width="8" height="6" fill="#131b2e" />
-              <rect x="65" y="70" width="7" height="8" fill="#131b2e" />
-              <rect x="78" y="75" width="8" height="6" fill="#047857" />
-              <rect x="88" y="80" width="6" height="6" fill="#131b2e" />
-            </svg>
+        {error && (
+          <div role="alert" className="mb-3 p-2.5 rounded-xl bg-[#FFF1F2] border border-rose-200 text-xs text-[#E11D48]">
+            {error}
           </div>
+        )}
 
-          <div className="mt-3 text-center">
-            <span className="font-mono text-sm font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-lg">
-              {currentToken}
-            </span>
-            <p className="text-xs font-semibold text-slate-800 mt-2">
-              {labDetails?.lab?.name || `Laboratorium ${selectedLab}`} • SMAN 3 Salatiga
-            </p>
-          </div>
-        </div>
-
-        {/* Step 1 & 2 Results: Room Info & Schedule */}
-        <div className="space-y-3 mb-4">
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px] text-emerald-600">calendar_month</span>
-                Jadwal Praktikum Hari Ini:
-              </span>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                {labDetails?.lab?.status || 'Siap Digunakan'}
-              </span>
+        {loading ? (
+          <p className="text-xs text-slate-400 text-center py-8">Memuat QR…</p>
+        ) : qr ? (
+          <div className="text-center flex flex-col items-center">
+            <div className="p-4 bg-white rounded-2xl border-2 border-dashed border-[#00685f] shadow-md mb-3 flex flex-col items-center">
+              {qrImage ? <img src={qrImage} alt={`QR ${qr.labName}`} className="w-48 h-48" /> : <div className="w-48 h-48" />}
+              <span className="font-mono text-[11px] font-bold text-[#00685f] mt-2 break-all max-w-[12rem]">{qr.labName}</span>
             </div>
-
-            {labDetails?.schedules && labDetails.schedules.length > 0 ? (
-              <div className="space-y-1.5 mt-2">
-                {labDetails.schedules.map((s: any) => (
-                  <div key={s.id} className="p-2 rounded-lg bg-white border border-slate-200 text-xs">
-                    <div className="flex items-center justify-between font-semibold text-slate-900">
-                      <span>{s.timeSlot}</span>
-                      <span className="text-emerald-700 font-bold">{s.className}</span>
-                    </div>
-                    <div className="text-slate-600 text-[11px] mt-0.5">
-                      {s.subject} • {s.teacherName}
-                    </div>
-                    {s.topic && (
-                      <div className="text-slate-500 text-[11px] italic mt-0.5 truncate">
-                        Topik: {s.topic}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500 italic py-2 text-center">
-                Belum ada jadwal praktikum terjadwal di bilik ini untuk jam sekarang.
-              </p>
-            )}
+            <p className="text-[11px] text-slate-500 break-all mb-4">{qr.url}</p>
+            <div className="grid grid-cols-3 gap-2 w-full">
+              <button onClick={copyLink} className="py-2 px-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[16px]">content_copy</span>Salin
+              </button>
+              <button onClick={download} className="py-2 px-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[16px]">download</span>Unduh
+              </button>
+              <button onClick={print} className="py-2 px-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[16px]">print</span>Cetak
+              </button>
+            </div>
+            <button
+              onClick={generate}
+              disabled={busy}
+              className="mt-3 text-xs font-semibold text-[#E11D48] hover:underline disabled:opacity-50"
+            >
+              {busy ? 'Memproses…' : 'Buat ulang QR (cabut QR lama)'}
+            </button>
           </div>
-
-          <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">info</span>
-            <span>
-              <strong>Pindai QR Pintu</strong> hanya menampilkan identitas lab &amp; jadwal. Tidak membuat jurnal otomatis dan tidak memuat inventaris.
-            </span>
+        ) : (
+          <div className="text-center py-6">
+            <p className="text-sm text-slate-500 mb-4">Belum ada QR aktif untuk laboratorium ini.</p>
+            <button
+              onClick={generate}
+              disabled={busy || labId == null}
+              className="px-5 py-2 rounded-xl bg-[#00685f] hover:bg-[#008378] disabled:opacity-50 text-white text-xs sm:text-sm font-bold shadow-md"
+            >
+              {busy ? 'Memproses…' : 'Terbitkan QR Laboratorium'}
+            </button>
           </div>
-        </div>
+        )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-200">
+        <div className="flex justify-end pt-4 mt-4 border-t border-slate-100">
           <button
-            type="button"
-            onClick={handleCopyLink}
-            className="flex-1 h-10 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5 transition-colors"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-[#F8FAFC] hover:bg-slate-100 text-[#131b2e] text-xs font-semibold border border-slate-200 transition-colors"
           >
-            <span className="material-symbols-outlined text-[16px]">
-              {copied ? 'check' : 'content_copy'}
-            </span>
-            <span>{copied ? 'Token Disalin!' : 'Salin Token QR'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onProceedToJournal?.(selectedLab);
-            }}
-            className="flex-1 h-10 px-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors"
-          >
-            <span className="material-symbols-outlined text-[16px]">edit_note</span>
-            <span>Lanjut Isi Jurnal Guru</span>
+            Tutup
           </button>
         </div>
       </div>
     </div>
   );
 };
-

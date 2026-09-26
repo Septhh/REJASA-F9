@@ -1,8 +1,6 @@
 {
-  "name": "Sistem Inventaris Laboratorium Sekolah",
-  "description": "Sistem manajemen inventaris alat laboratorium per lab (Biologi, Fisika, Kimia, Komputer, Bahasa), autentikasi guru via Kode Guru, dan manajemen guru terotorisasi admin.",
+  "name": "SLMS Core - Laboratorium EduLab",
+  "description": "Sistem Manajemen Laboratorium Sekolah SMAN 1 EduLab untuk monitoring SOP, verifikasi jurnal praktikum, dan pelaporan insiden alat.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

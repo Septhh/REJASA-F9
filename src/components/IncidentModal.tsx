@@ -41,57 +41,57 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({
   return (
     <div
       id="incident-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50 backdrop-blur-xs p-4 animate-in fade-in duration-200"
     >
       <div
         id="incident-modal-panel"
-        className="bg-white rounded-[2px] w-full max-w-lg shadow-2xl border border-slate-300 p-6 relative max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 p-6 sm:p-7 relative max-h-[90vh] overflow-y-auto"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200">
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-[2px] bg-rose-50 border border-rose-300 text-rose-700 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[20px]">build</span>
+            <div className="w-10 h-10 rounded-xl bg-[#FFF1F2] text-[#E11D48] flex items-center justify-center">
+              <span className="material-symbols-outlined text-[24px]">build</span>
             </div>
             <div>
-              <h3 className="font-['Plus_Jakarta_Sans'] text-base font-bold text-[#131b2e] tracking-tight">
-                Disposisi Insiden Alat Lab
+              <h3 className="font-['Plus_Jakarta_Sans'] text-lg font-bold text-[#131b2e]">
+                Form Disposisi Masalah Alat
               </h3>
-              <span className="font-mono text-xs text-rose-700 font-bold">
-                KODE: {incident.assetCode}
+              <span className="font-mono text-xs text-[#E11D48] font-bold">
+                KODE ALAT: {incident.assetCode}
               </span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-[2px] border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
           >
-            <span className="material-symbols-outlined text-[18px]">close</span>
+            <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {/* Short Incident Context */}
-        <div className="p-3 bg-slate-50 rounded-[2px] mb-4 border border-slate-300 text-xs">
+        <div className="p-3 bg-slate-50 rounded-xl mb-4 border border-slate-200/60 text-xs">
           <div className="flex justify-between font-semibold text-slate-800">
             <span>{incident.title}</span>
-            <span className="text-slate-500 font-mono text-[11px]">{incident.time}</span>
+            <span className="text-slate-500 font-normal">{incident.time}</span>
           </div>
-          <p className="text-slate-600 mt-1 leading-relaxed">{incident.description}</p>
-          <div className="mt-2 text-[11px] text-slate-600 font-mono">
-            Pelapor: <span className="font-bold text-slate-800">{incident.reporter}</span> ({incident.className})
+          <p className="text-slate-600 mt-1">{incident.description}</p>
+          <div className="mt-2 text-[11px] text-slate-500">
+            Pelapor: <span className="font-semibold text-slate-700">{incident.reporter}</span> ({incident.className})
           </div>
         </div>
 
         {/* Form Body */}
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-xs font-mono font-bold text-slate-700 mb-1 uppercase tracking-tight">
-              Tindakan Penanganan
+            <label className="block text-xs font-semibold text-[#131b2e] mb-1.5">
+              Tindakan Laboran
             </label>
             <select
               value={action}
               onChange={(e) => setAction(e.target.value)}
-              className="w-full h-9 px-3 rounded-[2px] bg-slate-50 border border-slate-300 text-xs text-[#131b2e] focus:bg-white focus:outline-none focus:border-slate-800"
+              className="w-full h-10 px-3 rounded-xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#131b2e] focus:ring-2 focus:ring-[#00685f] focus:outline-none"
             >
               <option value="service">Kirim Servis Internal Teknisi Sekolah</option>
               <option value="vendor">Klaim Garansi Vendor Eksternal</option>
@@ -101,15 +101,15 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-mono font-bold text-slate-700 mb-1 uppercase tracking-tight">
+            <label className="block text-xs font-semibold text-[#131b2e] mb-1.5">
               Tingkat Urgensi Praktikum
             </label>
             <div className="grid grid-cols-3 gap-2">
               <label
-                className={`flex items-center justify-center p-2 rounded-[2px] border cursor-pointer text-xs font-mono font-semibold transition-colors ${
+                className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer text-xs font-semibold transition-colors ${
                   urgency === 'low'
-                    ? 'bg-sky-50 border-sky-600 text-sky-800'
-                    : 'bg-slate-50 border-slate-300 text-slate-600 hover:bg-slate-100'
+                    ? 'bg-[#f2f3ff] border-[#00687a] text-[#00687a]'
+                    : 'bg-[#F8FAFC] border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 <input
@@ -120,14 +120,14 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({
                   onChange={() => setUrgency('low')}
                   className="sr-only"
                 />
-                RENDAH
+                Rendah
               </label>
 
               <label
-                className={`flex items-center justify-center p-2 rounded-[2px] border cursor-pointer text-xs font-mono font-semibold transition-colors ${
+                className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer text-xs font-semibold transition-colors ${
                   urgency === 'medium'
-                    ? 'bg-amber-50 border-amber-600 text-amber-800'
-                    : 'bg-slate-50 border-slate-300 text-slate-600 hover:bg-slate-100'
+                    ? 'bg-[#e2e7ff] border-[#00685f] text-[#00685f]'
+                    : 'bg-[#F8FAFC] border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 <input
@@ -138,14 +138,14 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({
                   onChange={() => setUrgency('medium')}
                   className="sr-only"
                 />
-                SEDANG
+                Sedang
               </label>
 
               <label
-                className={`flex items-center justify-center p-2 rounded-[2px] border cursor-pointer text-xs font-mono font-semibold transition-colors ${
+                className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer text-xs font-semibold transition-colors ${
                   urgency === 'critical'
-                    ? 'bg-rose-50 border-rose-600 text-rose-800'
-                    : 'bg-slate-50 border-slate-300 text-slate-600 hover:bg-slate-100'
+                    ? 'bg-[#FFF1F2] border-[#E11D48] text-[#E11D48]'
+                    : 'bg-[#F8FAFC] border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 <input
@@ -156,37 +156,37 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({
                   onChange={() => setUrgency('critical')}
                   className="sr-only"
                 />
-                KRITIS
+                Kritis Segera
               </label>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono font-bold text-slate-700 mb-1 uppercase tracking-tight">
+            <label className="block text-xs font-semibold text-[#131b2e] mb-1.5">
               Catatan Verifikasi Fisik Laboran
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Kondisi fisik kerusakan, kronologi, dan estimasi suku cadang..."
-              className="w-full p-2.5 rounded-[2px] bg-slate-50 border border-slate-300 text-xs text-[#131b2e] focus:bg-white focus:outline-none focus:border-slate-800"
+              placeholder="Deskripsikan kondisi kerusakan fisik alat dan estimasi biaya perbaikan jika ada..."
+              className="w-full p-3 rounded-xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs sm:text-sm text-[#131b2e] focus:ring-2 focus:ring-[#00685f] focus:outline-none"
             ></textarea>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-[2px] bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-300 transition-colors"
+              className="px-4 py-2 rounded-xl bg-[#F8FAFC] hover:bg-slate-100 text-[#131b2e] text-xs font-semibold border border-slate-200 transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-[2px] bg-[#9E1B32] hover:bg-[#800E26] text-white text-xs font-semibold border border-[#800E26] shadow-xs transition-colors"
+              className="px-5 py-2 rounded-xl bg-[#00685f] hover:bg-[#008378] text-white text-xs sm:text-sm font-bold shadow-md transition-all active:scale-98"
             >
-              Terbitkan Tiket Disposisi
+              Terbitkan Tiket &amp; Simpan
             </button>
           </div>
         </form>

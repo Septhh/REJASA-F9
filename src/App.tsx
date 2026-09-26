@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MetricCards } from './components/MetricCards';
@@ -10,30 +10,27 @@ import { IncidentModal } from './components/IncidentModal';
 import { CreateQRModal } from './components/CreateQRModal';
 import { ReviewJournalModal } from './components/ReviewJournalModal';
 import { PrintReportModal } from './components/PrintReportModal';
-import { AppsScriptIntegrationModal } from './components/AppsScriptIntegrationModal';
+import { InventoryPanel } from './components/InventoryPanel';
+import { QRManager } from './components/QRManager';
+import type { HeaderNotification } from './components/Header';
+import { api } from './lib/api';
+import { useAuth } from './lib/auth';
+import { addDaysStr, todayWib } from './lib/format';
 
 import {
   INITIAL_ROOMS,
-  INITIAL_JOURNALS,
-  INITIAL_INCIDENTS,
   LAB_MONTHLY_STATS,
   WEEKLY_HOURS_ALLOCATION,
 } from './data/labData';
 
-import { LabRoom, JournalEntry, IncidentItem, JournalStatus, LabCode } from './types';
-import { useAdminAuth } from './context/AdminAuthContext.tsx';
-import { AdminLoginModal } from './components/AdminLoginModal.tsx';
-import { AdminManagementModal } from './components/AdminManagementModal.tsx';
-
-import { LabInventoryView } from './components/LabInventoryView';
-import { DamagedEquipmentRoadmapView } from './components/DamagedEquipmentRoadmapView';
-import { TeacherLoginModal } from './components/TeacherLoginModal';
-import { TeacherManagementModal } from './components/TeacherManagementModal';
-import { TeacherJournalModal } from './components/TeacherJournalModal';
+import { LabRoom, JournalEntry, IncidentItem, Lab, QRCodeInfo, InventoryItem } from './types';
 
 export default function App() {
-  // Navigation & View state - Default to 'inventaris' as requested by user
-  const [activeTab, setActiveTab] = useState<string>('inventaris');
+  const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
+  // Navigation & View state
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Filter & Search
@@ -68,105 +65,16 @@ export default function App() {
 
   // Main data collections
   const [rooms, setRooms] = useState<LabRoom[]>(INITIAL_ROOMS);
-  const [journals, setJournals] = useState<JournalEntry[]>(INITIAL_JOURNALS);
-  const [incidents, setIncidents] = useState<IncidentItem[]>(INITIAL_INCIDENTS);
+  const [journals, setJournals] = useState<JournalEntry[]>([]);
+  const [incidents, setIncidents] = useState<IncidentItem[]>([]);
+  const [labs, setLabs] = useState<Lab[]>([]);
+  const [qrCodes, setQrCodes] = useState<QRCodeInfo[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [qrLabId, setQrLabId] = useState<number | null>(null);
   const [weeklyAllocation] = useState(WEEKLY_HOURS_ALLOCATION);
   const [usageStats] = useState(LAB_MONTHLY_STATS);
-  const { admin } = useAdminAuth();
-
-  // Admin Auth modals
-  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
-  const [isAdminManagementOpen, setIsAdminManagementOpen] = useState(false);
-
-  // Load from Cloud SQL backend
-  const loadDatabaseData = async () => {
-    try {
-      const [roomsRes, journalsRes, incidentsRes] = await Promise.all([
-        fetch('/api/rooms'),
-        fetch('/api/journals'),
-        fetch('/api/incidents'),
-      ]);
-
-      if (roomsRes.ok) {
-        const roomsData = await roomsRes.json();
-        if (roomsData && roomsData.length > 0) {
-          setRooms(
-            roomsData.map((r: any) => ({
-              id: String(r.id),
-              code: r.code,
-              name: r.name,
-              badgeCode: r.badgeCode,
-              badgeBg: r.badgeBg,
-              badgeColor: r.badgeColor,
-              status: r.status,
-              statusType: r.statusType,
-              className: r.className || undefined,
-              topic: r.topic || undefined,
-              teacher: r.teacher || undefined,
-              statusDetail: r.statusDetail,
-              statusDetailType: r.statusDetailType,
-              workstations: r.workstations,
-            }))
-          );
-        }
-      }
-
-      if (journalsRes.ok) {
-        const journalsData = await journalsRes.json();
-        if (journalsData && journalsData.length > 0) {
-          setJournals(
-            journalsData.map((j: any) => ({
-              id: String(j.id),
-              code: j.code,
-              session: j.session,
-              time: j.time,
-              labCode: j.labCode,
-              labName: j.labName,
-              teacherName: j.teacherName,
-              teacherInitials: j.teacherInitials,
-              teacherAvatarColor: j.teacherAvatarColor,
-              className: j.className,
-              topic: j.topic,
-              status: j.status,
-              notes: j.notes,
-              studentsCount: j.studentsCount,
-              sopComplied: j.sopComplied,
-              incidentReported: j.incidentReported,
-            }))
-          );
-        }
-      }
-
-      if (incidentsRes.ok) {
-        const incidentsData = await incidentsRes.json();
-        if (incidentsData && incidentsData.length > 0) {
-          setIncidents(
-            incidentsData.map((inc: any) => ({
-              id: String(inc.id),
-              assetCode: inc.assetCode,
-              time: inc.time,
-              title: inc.title,
-              description: inc.description,
-              reporter: inc.reporter,
-              className: inc.className,
-              labCode: inc.labCode,
-              photoUrl: inc.photoUrl,
-              photoAlt: inc.photoAlt,
-              status: inc.status,
-              actionType: inc.actionType,
-              actionLabel: inc.actionLabel,
-            }))
-          );
-        }
-      }
-    } catch (err) {
-      console.warn('Backend fetch note, using client cache:', err);
-    }
-  };
-
-  useEffect(() => {
-    loadDatabaseData();
-  }, []);
 
   // Modals state
   const [selectedIncident, setSelectedIncident] = useState<IncidentItem | null>(null);
@@ -178,12 +86,6 @@ export default function App() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [isIntegrationOpen, setIsIntegrationOpen] = useState(false);
-
-  // Teacher Auth & Journal Modals
-  const [isTeacherLoginOpen, setIsTeacherLoginOpen] = useState(false);
-  const [isTeacherManagementOpen, setIsTeacherManagementOpen] = useState(false);
-  const [isTeacherJournalOpen, setIsTeacherJournalOpen] = useState(false);
 
   // Toast feedback state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -195,8 +97,51 @@ export default function App() {
     }, 4000);
   };
 
+  // Memuat data dari API (jurnal & insiden untuk staf; lab, QR, inventaris hanya ADMIN).
+  const loadAll = useCallback(async () => {
+    try {
+      const [j, i] = await Promise.all([
+        api.get<{ journals: JournalEntry[] }>('/journals'),
+        api.get<{ incidents: IncidentItem[] }>('/incidents'),
+      ]);
+      setJournals(j.journals);
+      setIncidents(i.incidents);
+      if (isAdmin) {
+        const [l, q, inv] = await Promise.all([
+          api.get<{ labs: Lab[] }>('/labs'),
+          api.get<{ qrCodes: QRCodeInfo[] }>('/qr'),
+          api.get<{ items: InventoryItem[] }>('/inventory'),
+        ]);
+        setLabs(l.labs);
+        setQrCodes(q.qrCodes);
+        setInventory(inv.items);
+      }
+      setLoadError('');
+    } catch (e: any) {
+      setLoadError(e?.message || 'Gagal memuat data.');
+    } finally {
+      setLoading(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    loadAll();
+    const t = setInterval(loadAll, 30_000);
+    return () => clearInterval(t);
+  }, [loadAll]);
+
+  // Rentang waktu dashboard (WIB)
+  const today = todayWib();
+  const inRange = (j: JournalEntry) => {
+    const d = j.date ?? today;
+    if (selectedTimeRange === 'today') return d === today;
+    if (selectedTimeRange === 'yesterday') return d === addDaysStr(today, -1);
+    return d >= addDaysStr(today, -6) && d <= today;
+  };
+  const dashboardJournals = journals.filter(inRange);
+
   // KPI Calculations
-  const totalJournalsToday = journals.length;
+  const totalJournalsToday = dashboardJournals.length;
   const pendingReviewCount = journals.filter(
     (j) => j.status === 'SUBMITTED'
   ).length;
@@ -220,34 +165,17 @@ export default function App() {
     }
   };
 
-  const handleSubmitDisposition = (
+  const handleSubmitDisposition = async (
     incidentId: string,
     data: { action: string; urgency: string; notes: string }
   ) => {
-    setIncidents((prev) =>
-      prev.map((item) =>
-        item.id === incidentId
-          ? {
-              ...item,
-              status: 'Disposed',
-              actionLabel: 'Tiket Diproses',
-            }
-          : item
-      )
-    );
-    // Persist to Cloud SQL backend
-    const numId = parseInt(incidentId, 10);
-    if (!isNaN(numId)) {
-      fetch(`/api/incidents/${numId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(admin ? { 'x-admin-code': admin.adminCode } : {}),
-        },
-        body: JSON.stringify({ status: 'Disposed' }),
-      }).catch((e) => console.warn('Incident sync notice:', e));
+    try {
+      const r = await api.patch<{ incident: IncidentItem }>(`/incidents/${incidentId}/disposition`, data);
+      setIncidents((prev) => prev.map((item) => (item.id === incidentId ? r.incident : item)));
+      showToast(`Tiket penanganan berhasil diterbitkan untuk insiden ${r.incident.assetCode}!`);
+    } catch (e: any) {
+      showToast(e?.message || 'Gagal memproses tiket insiden.');
     }
-    showToast(`Tiket penanganan berhasil diterbitkan untuk insiden ${selectedIncident?.assetCode}!`);
   };
 
   const handleOpenReview = (journal: JournalEntry) => {
@@ -255,74 +183,65 @@ export default function App() {
     setIsReviewModalOpen(true);
   };
 
-  const handleUpdateJournalStatus = (
+  const handleSubmitReview = async (
     journalId: string,
-    newStatus: JournalStatus,
-    reviewNotes: string
+    newStatus: 'REVIEWED' | 'NEEDS_CORRECTION',
+    reviewNotes: string,
+    sopComplied: boolean
   ) => {
-    setJournals((prev) =>
-      prev.map((j) =>
-        j.id === journalId
-          ? {
-              ...j,
-              status: newStatus,
-              notes: reviewNotes || j.notes,
-            }
-          : j
-      )
+    const r = await api.post<{ journal: JournalEntry }>(`/journals/${journalId}/reviews`, {
+      status: newStatus,
+      notes: reviewNotes,
+      sopComplied,
+    });
+    setJournals((prev) => prev.map((j) => (j.id === journalId ? r.journal : j)));
+    showToast(
+      newStatus === 'REVIEWED'
+        ? `Jurnal ${r.journal.code} telah diverifikasi & disetujui.`
+        : `Jurnal ${r.journal.code} dikembalikan untuk perbaikan guru.`
     );
-    // Persist to Cloud SQL backend
-    const numId = parseInt(journalId, 10);
-    if (!isNaN(numId)) {
-      // Save status and audit review log in Cloud SQL
-      fetch(`/api/journals/${numId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(admin ? { 'x-admin-code': admin.adminCode } : {}),
-        },
-        body: JSON.stringify({ status: newStatus, notes: reviewNotes }),
-      }).catch((e) => console.warn('Journal status sync notice:', e));
-
-      fetch(`/api/journals/${numId}/reviews`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(admin ? { 'x-admin-code': admin.adminCode } : {}),
-        },
-        body: JSON.stringify({
-          status: newStatus,
-          notes: reviewNotes,
-          reviewerName: admin?.name || 'Laboran SMAN 3 Salatiga',
-        }),
-      }).catch((e) => console.warn('Journal review log sync notice:', e));
-    }
-
-    if (newStatus === 'REVIEWED') {
-      showToast(`Jurnal ${selectedJournal?.code} telah diverifikasi & disetujui.`);
-    } else {
-      showToast(`Jurnal ${selectedJournal?.code} dikembalikan untuk perbaikan guru.`);
-    }
   };
 
-  const handleOpenQRForLab = () => {
+  const openQRManager = (labId?: number) => {
+    setQrLabId(labId ?? null);
     setIsCreateQROpen(true);
   };
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     setIsRefreshing(true);
-    await loadDatabaseData();
-    setIsRefreshing(false);
-    showToast('Data REJASA Cloud SQL berhasil disinkronkan.');
+    loadAll().then(() => {
+      setIsRefreshing(false);
+      showToast('Data REJASA berhasil disinkronkan.');
+    });
   };
 
+  const notifications: HeaderNotification[] = [];
+  if (pendingReviewCount > 0)
+    notifications.push({
+      id: 'n-review',
+      title: 'Review Jurnal Diperlukan',
+      desc: `${pendingReviewCount} jurnal laboratorium menunggu review.`,
+      time: 'Saat ini',
+      type: 'info',
+    });
+  if (activeIncidentsCount > 0)
+    notifications.push({
+      id: 'n-incident',
+      title: 'Insiden Alat Terbuka',
+      desc: `${activeIncidentsCount} insiden alat wajib ditindaklanjuti.`,
+      time: 'Saat ini',
+      type: 'danger',
+    });
+
+  if (!user) return null;
+
   return (
-    <div className="bg-[#F8FAFC] min-h-screen text-[#131b2e] flex flex-col antialiased selection:bg-[#9E1B32]/20 selection:text-[#9E1B32]">
+    <div className="bg-[#F8FAFC] min-h-screen text-[#131b2e] flex flex-col antialiased selection:bg-[#00685f]/20 selection:text-[#00685f]">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-[#0F172A] text-white text-xs sm:text-sm px-4 py-3 rounded-[2px] shadow-2xl border border-slate-700 flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
-          <span className="material-symbols-outlined text-[#FDA4AF] text-[20px]">
+        <div className="fixed top-20 right-6 z-50 bg-[#0F172A] text-white text-xs sm:text-sm px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
+          <span className="material-symbols-outlined text-[#89f5e7] text-[20px]">
             check_circle
           </span>
           <span className="font-medium">{toastMessage}</span>
@@ -342,9 +261,8 @@ export default function App() {
         pendingCount={pendingReviewCount}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
-        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-        onOpenTeacherLogin={() => setIsTeacherLoginOpen(true)}
-        onOpenTeacherManagement={() => setIsTeacherManagementOpen(true)}
+        user={user}
+        onLogout={logout}
       />
 
       {/* Main Layout Area */}
@@ -353,47 +271,39 @@ export default function App() {
         <Header
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          onOpenCreateQR={() => setIsCreateQROpen(true)}
+          onOpenCreateQR={() => openQRManager()}
+          canCreateQR={isAdmin}
+          notifications={notifications}
           onOpenPrintReport={() => setIsPrintModalOpen(true)}
-          onOpenIntegration={() => setIsIntegrationOpen(true)}
-          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-          onOpenAdminManagement={() => setIsAdminManagementOpen(true)}
-          onOpenTeacherJournalForm={() => setIsTeacherJournalOpen(true)}
-          onOpenTeacherLogin={() => setIsTeacherLoginOpen(true)}
-          onOpenTeacherManagement={() => setIsTeacherManagementOpen(true)}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
-          unreadAlertCount={activeIncidentsCount + 1}
+          unreadAlertCount={notifications.length}
         />
 
         {/* Main Content Area */}
         <main className="relative pt-20 px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full max-w-[1600px] mx-auto">
           {/* Dynamic Atmospheric Background Glow */}
-          <div className="absolute -top-24 -left-20 w-96 h-96 rounded-full bg-[#9E1B32]/10 blur-3xl pointer-events-none" />
-          <div className="absolute top-1/2 -right-32 w-[32rem] h-[32rem] rounded-full bg-[#800E26]/5 blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 -left-20 w-96 h-96 rounded-full bg-[#00685f]/10 blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 -right-32 w-[32rem] h-[32rem] rounded-full bg-[#00687a]/5 blur-3xl pointer-events-none" />
+
+          {loadError && (
+            <div role="alert" className="relative z-10 mb-4 p-3 rounded-xl bg-[#FFF1F2] border border-rose-200 text-xs text-[#E11D48] flex items-center justify-between">
+              <span>{loadError}</span>
+              <button onClick={() => loadAll()} className="font-bold underline">Coba lagi</button>
+            </div>
+          )}
+          {loading && <p className="relative z-10 text-xs text-slate-400 mb-4">Memuat data…</p>}
 
           {/* Tab Content switch */}
-          {activeTab === 'inventaris' ? (
-            <div className="relative z-10">
-              <LabInventoryView
-                onOpenTeacherLogin={() => setIsTeacherLoginOpen(true)}
-                onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-                onOpenTeacherManagement={() => setIsTeacherManagementOpen(true)}
-              />
-            </div>
-          ) : activeTab === 'roadmap-alat' ? (
-            <div className="relative z-10">
-              <DamagedEquipmentRoadmapView onGoToInventory={() => setActiveTab('inventaris')} />
-            </div>
-          ) : activeTab === 'dashboard' ? (
+          {activeTab === 'dashboard' ? (
             <div className="relative z-10">
               {/* 1. HEADER RINGKASAN OPERASIONAL REAL-TIME */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-xs uppercase tracking-widest text-[#9E1B32] font-bold">
+                    <span className="font-mono text-xs uppercase tracking-widest text-[#00685f] font-bold">
                       REJASA • RAPID ACCESS JOURNAL
                     </span>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[2px] bg-[#ECFDF5] text-[#059669] text-xs font-semibold border border-emerald-200">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#ECFDF5] text-[#059669] text-xs font-semibold border border-emerald-200">
                       <span className="w-2 h-2 rounded-full bg-[#059669] animate-ping"></span>
                       NODE SYNC ACTIVE
                     </span>
@@ -402,7 +312,7 @@ export default function App() {
                     Dashboard Laboratorium
                   </h1>
                   <p className="text-xs sm:text-sm text-[#3d4947] flex items-center gap-1.5 mt-1">
-                    <span className="material-symbols-outlined text-[16px] text-[#9E1B32]">
+                    <span className="material-symbols-outlined text-[16px] text-[#00685f]">
                       verified
                     </span>
                     Sistem jurnal laboratorium digital untuk pencatatan cepat, review, dan pelacakan penggunaan laboratorium SMAN 3 Salatiga.
@@ -412,7 +322,7 @@ export default function App() {
                 {/* Quick Action Controls & Clock */}
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   {/* Realtime clock display */}
-                  <div className="bg-white px-3.5 py-1.5 rounded-[2px] shadow-xs border border-slate-300 flex items-center gap-3">
+                  <div className="bg-white px-3.5 py-1.5 rounded-xl shadow-sm border border-[#E2E8F0] flex items-center gap-3">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
                         Waktu Sistem REJASA
@@ -424,16 +334,16 @@ export default function App() {
                         {currentTime || 'Memuat waktu...'}
                       </span>
                     </div>
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#9E1B32]"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#00685f]"></div>
                   </div>
 
                   {/* Time Range Filter pills */}
-                  <div className="flex items-center bg-white rounded-[2px] p-1 shadow-xs border border-slate-300">
+                  <div className="flex items-center bg-white rounded-xl p-1 shadow-sm border border-[#E2E8F0]">
                     <button
                       onClick={() => setSelectedTimeRange('today')}
-                      className={`px-3 py-1.5 rounded-[2px] text-xs font-bold transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                         selectedTimeRange === 'today'
-                          ? 'bg-[#FFF1F2] text-[#9E1B32] border border-[#FECDD3]'
+                          ? 'bg-[#e2e7ff] text-[#131b2e] shadow-2xs'
                           : 'text-slate-600 hover:text-[#131b2e]'
                       }`}
                     >
@@ -441,9 +351,9 @@ export default function App() {
                     </button>
                     <button
                       onClick={() => setSelectedTimeRange('yesterday')}
-                      className={`px-3 py-1.5 rounded-[2px] text-xs font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         selectedTimeRange === 'yesterday'
-                          ? 'bg-[#FFF1F2] text-[#9E1B32] font-bold border border-[#FECDD3]'
+                          ? 'bg-[#e2e7ff] text-[#131b2e] font-bold shadow-2xs'
                           : 'text-slate-600 hover:text-[#131b2e]'
                       }`}
                     >
@@ -451,23 +361,30 @@ export default function App() {
                     </button>
                     <button
                       onClick={() => setSelectedTimeRange('week')}
-                      className={`px-3 py-1.5 rounded-[2px] text-xs font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         selectedTimeRange === 'week'
-                          ? 'bg-[#FFF1F2] text-[#9E1B32] font-bold border border-[#FECDD3]'
+                          ? 'bg-[#e2e7ff] text-[#131b2e] font-bold shadow-2xs'
                           : 'text-slate-600 hover:text-[#131b2e]'
                       }`}
                     >
                       Pekan Ini
+                    </button>
+                    <button
+                      onClick={() => alert('Pilih rentang tanggal kustom.')}
+                      className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                      title="Pilih Tanggal Manual"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">calendar_month</span>
                     </button>
                   </div>
 
                   {/* Refresh Data button */}
                   <button
                     onClick={handleRefresh}
-                    className="h-9 sm:h-10 px-3.5 rounded-[2px] bg-white hover:bg-slate-50 text-[#131b2e] text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-xs border border-slate-300 transition-all active:scale-95"
+                    className="h-9 sm:h-10 px-3.5 rounded-xl bg-white hover:bg-slate-50 text-[#131b2e] text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-sm border border-[#E2E8F0] transition-all active:scale-95"
                   >
                     <span
-                      className={`material-symbols-outlined text-[18px] text-[#9E1B32] ${
+                      className={`material-symbols-outlined text-[18px] text-[#00685f] ${
                         isRefreshing ? 'animate-spin' : ''
                       }`}
                     >
@@ -509,7 +426,7 @@ export default function App() {
                 <div className="lg:col-span-8 flex flex-col gap-6">
                   {/* Table Component */}
                   <JournalTable
-                    journals={journals}
+                    journals={dashboardJournals}
                     searchQuery={searchQuery}
                     onReviewJournal={handleOpenReview}
                     onViewAllJournals={() => setActiveTab('jurnal-laboratorium')}
@@ -532,12 +449,12 @@ export default function App() {
             </div>
           ) : (
             /* Subview Pages for Secondary Nav Items */
-            <div className="bg-white rounded-[2px] p-6 sm:p-8 shadow-xs border border-slate-300">
-              <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-200">
+            <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-[#E2E8F0]">
+              <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setActiveTab('dashboard')}
-                    className="p-2 rounded-[2px] bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-300"
+                    className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
                     title="Kembali ke Dashboard"
                   >
                     <span className="material-symbols-outlined text-[20px]">arrow_back</span>
@@ -558,7 +475,7 @@ export default function App() {
 
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className="px-4 py-2 rounded-[2px] bg-[#9E1B32] text-white text-xs font-semibold hover:bg-[#800E26] transition-colors shadow-xs border border-[#800E26]"
+                  className="px-4 py-2 rounded-xl bg-[#00685f] text-white text-xs font-semibold hover:bg-[#008378]"
                 >
                   Kembali ke Ringkasan Utama
                 </button>
@@ -576,7 +493,7 @@ export default function App() {
 
               {activeTab === 'review-jurnal' && (
                 <div>
-                  <div className="mb-4 p-4 rounded-[2px] bg-[#FFFBEB] border border-amber-300 text-xs text-amber-800">
+                  <div className="mb-4 p-4 rounded-xl bg-[#FFFBEB] border border-amber-200 text-xs text-amber-800">
                     Berikut adalah jurnal yang membutuhkan review laboran.
                   </div>
                   <JournalTable
@@ -588,48 +505,29 @@ export default function App() {
                 </div>
               )}
 
-              {activeTab === 'lab-qr-core' && (
+              {activeTab === 'lab-qr-core' && isAdmin && (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center bg-slate-50 p-4 rounded-[2px] border border-slate-300">
+                  <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <div>
-                      <h3 className="font-bold text-sm">Generator Token QR Presensi Guru</h3>
+                      <h3 className="font-bold text-sm">QR Identitas Laboratorium</h3>
                       <p className="text-xs text-slate-500">
-                        Cetak token fisik bilik untuk ditempel di pintu masing-masing jurnal.
+                        Cetak QR untuk ditempel di pintu laboratorium. Guru yang scan akan diarahkan ke alur jurnal; QR tidak berisi data inventaris.
                       </p>
                     </div>
                     <button
-                      onClick={() => setIsCreateQROpen(true)}
-                      className="px-4 py-2 bg-[#9E1B32] hover:bg-[#800E26] text-white rounded-[2px] text-xs font-bold border border-[#800E26] shadow-xs"
+                      onClick={() => openQRManager()}
+                      className="px-4 py-2 bg-[#00685f] text-white rounded-xl text-xs font-bold"
                     >
-                      + Buat Sesi QR Baru
+                      Kelola QR
                     </button>
                   </div>
-                  <RoomStatusGrid
-                    rooms={rooms}
-                    onSelectRoom={(r) => showToast(`Konfigurasi bilik ${r.name}`)}
-                  />
+                  <QRManager labs={labs} qrCodes={qrCodes} onManage={(id) => openQRManager(id)} />
                 </div>
               )}
 
-              {activeTab === 'inventaris-alat' && (
+              {activeTab === 'inventaris-alat' && isAdmin && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                      <div className="text-xs text-slate-500">Total Alat &amp; Mikroskop</div>
-                      <div className="text-2xl font-bold text-[#131b2e] mt-1">142 Unit</div>
-                      <div className="text-xs text-[#059669] mt-1">140 Kondisi Baik</div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-[#FFF1F2] border border-rose-200">
-                      <div className="text-xs text-[#E11D48]">Alat Rusak / Insiden</div>
-                      <div className="text-2xl font-bold text-[#E11D48] mt-1">2 Unit</div>
-                      <div className="text-xs text-slate-500 mt-1">BIO-MIC-03 &amp; KIM-GLS-118</div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-[#FFFBEB] border border-amber-200">
-                      <div className="text-xs text-[#D97706]">Reagen Kritis (&lt;20%)</div>
-                      <div className="text-2xl font-bold text-[#D97706] mt-1">3 Botol</div>
-                      <div className="text-xs text-slate-500 mt-1">HCl 0.1M, Fenolftalein, NaOH</div>
-                    </div>
-                  </div>
+                  <InventoryPanel items={inventory} />
                   <IncidentHub
                     incidents={incidents}
                     usageStats={usageStats}
@@ -705,14 +603,14 @@ export default function App() {
         onSubmitDisposition={handleSubmitDisposition}
       />
 
-      {/* MODAL 2: QR Pintu Laboratorium & Jadwal */}
+      {/* MODAL 2: QR Laboratorium (ADMIN) */}
       <CreateQRModal
         isOpen={isCreateQROpen}
         onClose={() => setIsCreateQROpen(false)}
-        onProceedToJournal={(_code) => {
-          setIsCreateQROpen(false);
-          setIsTeacherJournalOpen(true);
-        }}
+        labs={labs}
+        initialLabId={qrLabId}
+        onChanged={loadAll}
+        onToast={showToast}
       />
 
       {/* MODAL 3: Review & Verifikasi Jurnal */}
@@ -723,7 +621,7 @@ export default function App() {
           setIsReviewModalOpen(false);
           setSelectedJournal(null);
         }}
-        onUpdateStatus={handleUpdateJournalStatus}
+        onSubmitReview={handleSubmitReview}
       />
 
       {/* MODAL 4: Cetak Laporan */}
@@ -733,56 +631,6 @@ export default function App() {
         journals={journals}
         incidents={incidents}
         rooms={rooms}
-      />
-
-      {/* MODAL 5: Integrasi Cloud SQL & Google Apps Script */}
-      <AppsScriptIntegrationModal
-        isOpen={isIntegrationOpen}
-        onClose={() => setIsIntegrationOpen(false)}
-        journals={journals}
-        incidents={incidents}
-        onSyncSuccess={(msg) => showToast(msg)}
-      />
-
-      {/* MODAL 6: Otorisasi Kode Admin */}
-      <AdminLoginModal
-        isOpen={isAdminLoginOpen}
-        onClose={() => setIsAdminLoginOpen(false)}
-        onSuccess={() => {
-          showToast(`Otorisasi berhasil! Selamat bertugas di sistem REJASA.`);
-        }}
-      />
-
-      {/* MODAL 7: Kustomisasi Kode Admin & Hash Password */}
-      <AdminManagementModal
-        isOpen={isAdminManagementOpen}
-        onClose={() => setIsAdminManagementOpen(false)}
-        onToast={(msg) => showToast(msg)}
-      />
-
-      {/* MODAL 8: Login Kode Guru */}
-      <TeacherLoginModal
-        isOpen={isTeacherLoginOpen}
-        onClose={() => setIsTeacherLoginOpen(false)}
-        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-      />
-
-      {/* MODAL 9: Kelola Guru Terotorisasi Admin */}
-      <TeacherManagementModal
-        isOpen={isTeacherManagementOpen || activeTab === 'kelola-guru'}
-        onClose={() => {
-          setIsTeacherManagementOpen(false);
-          if (activeTab === 'kelola-guru') setActiveTab('inventaris');
-        }}
-        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-      />
-
-      {/* MODAL 10: Formulir Jurnal Guru Terpadu */}
-      <TeacherJournalModal
-        isOpen={isTeacherJournalOpen}
-        onClose={() => setIsTeacherJournalOpen(false)}
-        onSuccess={(msg) => showToast(msg)}
-        onOpenTeacherLogin={() => setIsTeacherLoginOpen(true)}
       />
     </div>
   );

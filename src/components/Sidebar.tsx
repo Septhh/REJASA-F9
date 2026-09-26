@@ -1,6 +1,5 @@
 import React from 'react';
-import { useAdminAuth } from '../context/AdminAuthContext.tsx';
-import { useTeacherAuth } from '../context/TeacherAuthContext.tsx';
+import { AuthUser } from '../types';
 
 interface SidebarProps {
   activeTab: string;
@@ -8,9 +7,8 @@ interface SidebarProps {
   pendingCount: number;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
-  onOpenAdminLogin?: () => void;
-  onOpenTeacherLogin?: () => void;
-  onOpenTeacherManagement?: () => void;
+  user: AuthUser;
+  onLogout: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -19,64 +17,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
   pendingCount,
   isOpenMobile = false,
   onCloseMobile,
-  onOpenAdminLogin,
-  onOpenTeacherLogin,
-  onOpenTeacherManagement,
+  user,
+  onLogout,
 }) => {
-  const { admin, logoutAdmin } = useAdminAuth();
-  const { currentTeacher, logoutTeacher } = useTeacherAuth();
-
-  const navItems = [
-    {
-      id: 'inventaris',
-      label: 'Inventaris Laboratorium',
-      icon: 'inventory_2',
-      badge: 'Prioritas',
-      badgeType: 'priority',
-    },
+  const allNavItems = [
     {
       id: 'dashboard',
-      label: 'Monitoring Ruang Lab',
+      label: 'Dashboard',
       icon: 'dashboard',
       badge: 'Live',
       badgeType: 'live',
     },
     {
       id: 'jurnal-laboratorium',
-      label: admin ? 'Daftar Jurnal' : 'Isi Jurnal Guru',
+      label: 'Jurnal Laboratorium',
       icon: 'menu_book',
-      badge: pendingCount > 0 ? `${pendingCount} Baru` : undefined,
+      badge: `${pendingCount} Pending`,
       badgeType: 'warning',
     },
-    ...(admin
-      ? [
-          {
-            id: 'kelola-guru',
-            label: 'Manajemen Akun Guru',
-            icon: 'manage_accounts',
-            badge: 'Admin',
-            badgeType: 'admin',
-          },
-          {
-            id: 'review-jurnal',
-            label: 'Verifikasi & Review',
-            icon: 'assignment_turned_in',
-          },
-          {
-            id: 'lab-qr-core',
-            label: 'QR Pintu Lab',
-            icon: 'qr_code_2',
-          },
-        ]
-      : []),
     {
-      id: 'roadmap-alat',
-      label: 'Pelaporan Alat Rusak',
-      icon: 'schedule',
-      badge: 'Nanti',
-      badgeType: 'future',
+      id: 'review-jurnal',
+      label: 'Review Jurnal',
+      icon: 'assignment_turned_in',
     },
-  ];
+    {
+      id: 'lab-qr-core',
+      label: 'QR Laboratorium',
+      icon: 'qr_code_scanner',
+      adminOnly: true,
+    },
+    {
+      id: 'inventaris-alat',
+      label: 'Laboratorium',
+      icon: 'science',
+      adminOnly: true,
+    },
+    {
+      id: 'audit-laporan',
+      label: 'Audit & Laporan',
+      icon: 'verified_user',
+    },
+  ] as Array<{ id: string; label: string; icon: string; badge?: string; badgeType?: string; adminOnly?: boolean }>;
+
+  // QR & inventaris hanya untuk ADMIN (server-side juga menolak role lain).
+  const navItems = allNavItems.filter((i) => !i.adminOnly || user.role === 'ADMIN');
 
   return (
     <>
@@ -96,17 +80,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <div className="flex flex-col flex-1 overflow-y-auto">
           {/* Brand header */}
-          <div className="p-5 flex items-center justify-between border-b border-slate-800">
+          <div className="p-6 flex items-center justify-between border-b border-slate-800">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#9E1B32] flex items-center justify-center text-white font-black text-sm tracking-wider shadow-md border border-red-400/30 shrink-0">
-                LAB
-              </div>
+              <img
+                alt="REJASA Logo"
+                className="h-8 w-auto object-contain"
+                src="https://lh3.googleusercontent.com/aida/AEtjO1WCeLzecpV83AZgHYUqqdEO5ksiJ0DyEzOvu4qp-HRmltyJ-K4aPmcz1HnS_FqaHQY7tapwSw9zGea61BSpyj9UGtN3gXr97a_cvkf095haTFbNHsvljFVUAYisd_JjGJ2c39JvOtv86wxRaoFhZqhfgWYCZcunDK8t4YtmcUdyIMVQLFUtZaF6TFr7TH27sclzbMB-HH440BF4kjYU27ZBGvk1qd6XPAwFQbrJ0htMb0BhH2a8Rb587_2Z"
+              />
               <div className="flex flex-col min-w-0">
-                <span className="font-['Plus_Jakarta_Sans'] font-bold text-base text-white tracking-tight leading-none truncate">
-                  SIM LAB SEKOLAH
+                <span className="font-['Plus_Jakarta_Sans'] font-bold text-lg text-white tracking-tight leading-none truncate">
+                  REJASA
                 </span>
-                <span className="text-[11px] text-slate-400 truncate mt-1">
-                  Inventaris & Fasilitas Lab
+                <span className="text-xs text-slate-400 truncate mt-1">
+                  Rapid Access Journal • Lab System
                 </span>
               </div>
             </div>
@@ -123,15 +109,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          {/* Quick status banner */}
+          {/* Node sync status banner */}
           <div className="px-4 py-2">
-            <div className="px-3 py-2 flex items-center justify-between rounded-xl bg-slate-800/80 mb-2 border border-slate-700/50">
+            <div className="px-3 py-1.5 flex items-center justify-between rounded-xl bg-slate-800/80 mb-2 border border-slate-700/50">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-xs font-semibold text-slate-300">5 Lab Terintegrasi</span>
+                <span className="text-xs font-medium text-slate-300">REJASA Lab System</span>
               </div>
-              <span className="text-[10px] font-bold tracking-wider text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
-                AKTIF
+              <span className="text-[11px] font-semibold tracking-wider text-[#89f5e7] bg-[#89f5e7]/10 px-1.5 py-0.5 rounded">
+                ONLINE
               </span>
             </div>
           </div>
@@ -148,28 +134,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     setActiveTab(item.id);
                     if (onCloseMobile) onCloseMobile();
                   }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left transition-all ${
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all ${
                     isActive
-                      ? 'bg-[#9E1B32] text-white font-bold shadow-sm'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white font-medium'
+                      ? 'bg-[#008378] text-[#f4fffc] font-semibold shadow-sm'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                    <span className="text-xs tracking-tight">{item.label}</span>
+                    <span className="text-sm tracking-tight">{item.label}</span>
                   </div>
 
                   {item.badge && (
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded font-extrabold ${
-                        item.badgeType === 'priority'
-                          ? 'bg-emerald-500 text-slate-900'
-                          : item.badgeType === 'live'
-                          ? 'bg-[#800E26] text-white'
-                          : item.badgeType === 'admin'
-                          ? 'bg-red-900 text-red-100 border border-red-700'
-                          : item.badgeType === 'future'
-                          ? 'bg-amber-400 text-slate-900'
+                      className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                        item.badgeType === 'live'
+                          ? 'bg-[#00685f] text-white'
                           : 'bg-[#FFFBEB] text-[#D97706]'
                       }`}
                     >
@@ -182,86 +162,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
         </div>
 
-        {/* User profile cards at bottom */}
-        <div className="p-3 border-t border-slate-800 bg-slate-900/90 space-y-2">
-          {/* Teacher session */}
-          {currentTeacher ? (
-            <div className="p-2.5 rounded-xl bg-emerald-950/70 border border-emerald-800/80 flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                  {currentTeacher.name.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-900/80 px-1 rounded">
-                      {currentTeacher.teacherCode}
-                    </span>
-                  </div>
-                  <div className="text-xs font-bold text-white truncate max-w-[110px]">
-                    {currentTeacher.name}
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={logoutTeacher}
-                title="Keluar Sesi Guru"
-                className="p-1 rounded text-emerald-400 hover:text-white hover:bg-emerald-900/80"
-              >
-                <span className="material-symbols-outlined text-[18px]">logout</span>
-              </button>
+        {/* User profile card at bottom */}
+        <div className="p-4 border-t border-slate-800 bg-slate-900/60">
+          <div className="flex items-center gap-3 p-1">
+            <div className="w-9 h-9 rounded-full bg-[#008378] ring-2 ring-[#008378] text-white flex items-center justify-center font-bold text-sm shrink-0">
+              {user.name
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((w) => w[0])
+                .join('')
+                .toUpperCase()}
             </div>
-          ) : (
-            <button
-              onClick={onOpenTeacherLogin}
-              className="w-full flex items-center gap-2 p-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/50 text-left transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px] text-emerald-400">key</span>
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-bold text-white">Akses Guru (Kode Guru)</span>
-                <span className="text-[10px] text-emerald-300/80">Masukkan kode guru saja</span>
-              </div>
-            </button>
-          )}
-
-          {/* Admin session */}
-          {admin ? (
-            <div className="p-2.5 rounded-xl bg-red-950/60 border border-red-800/60 flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-[#9E1B32] text-white flex items-center justify-center font-mono font-bold text-xs shrink-0">
-                  {admin.adminCode.substring(0, 3)}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-mono font-bold text-red-300 bg-red-900/80 px-1 rounded">
-                      {admin.adminCode}
-                    </span>
-                    <span className="text-[10px] text-slate-300">{admin.role}</span>
-                  </div>
-                  <div className="text-xs font-bold text-white truncate max-w-[110px]">
-                    {admin.name}
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={logoutAdmin}
-                title="Keluar Sesi Admin"
-                className="p-1 rounded text-red-400 hover:text-white hover:bg-red-900/80"
-              >
-                <span className="material-symbols-outlined text-[18px]">logout</span>
-              </button>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-sm text-white font-semibold truncate leading-tight">{user.name}</span>
+              <span className="text-xs text-slate-400 truncate">
+                {user.role === 'ADMIN' ? 'Administrator Laboratorium' : 'Laboran'}
+              </span>
+              <span className="text-[11px] text-[#89f5e7] truncate mt-0.5 font-medium">SMAN 3 Salatiga</span>
             </div>
-          ) : (
             <button
-              onClick={onOpenAdminLogin}
-              className="w-full flex items-center gap-2 p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-left transition-colors"
+              onClick={onLogout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              title="Keluar"
+              aria-label="Keluar"
             >
-              <span className="material-symbols-outlined text-[20px] text-red-400">shield</span>
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-bold text-white">Login Admin Terotorisasi</span>
-                <span className="text-[10px] text-slate-400">Untuk kelola guru & izin lab</span>
-              </div>
+              <span className="material-symbols-outlined text-[20px]">logout</span>
             </button>
-          )}
+          </div>
         </div>
       </aside>
     </>

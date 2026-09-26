@@ -41,11 +41,11 @@ export const JournalTable: React.FC<JournalTableProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 gap-3 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#9E1B32] text-[24px]">
+            <span className="material-symbols-outlined text-[#00685f] text-[24px]">
               history_edu
             </span>
             <h2 className="font-['Plus_Jakarta_Sans'] text-lg sm:text-xl font-bold text-[#131b2e]">
-              Jurnal Praktikum Terbaru Hari Ini
+              Jurnal Praktikum Terbaru
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -87,7 +87,7 @@ export const JournalTable: React.FC<JournalTableProps> = ({
                     setShowFilterMenu(false);
                   }}
                   className={`w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-slate-50 ${
-                    statusFilter === 'ALL' ? 'font-bold text-[#9E1B32]' : 'text-slate-700'
+                    statusFilter === 'ALL' ? 'font-bold text-[#00685f]' : 'text-slate-700'
                   }`}
                 >
                   <span>Semua Status</span>
@@ -185,7 +185,7 @@ export const JournalTable: React.FC<JournalTableProps> = ({
                     {/* No Jurnal & Sesi */}
                     <td className="py-3.5 px-6">
                       <div className="flex flex-col">
-                        <span className="font-mono text-xs font-bold text-[#9E1B32]">
+                        <span className="font-mono text-xs font-bold text-[#00685f]">
                           {journal.code}
                         </span>
                         <span className="text-xs text-slate-400 mt-0.5">
@@ -262,18 +262,17 @@ export const JournalTable: React.FC<JournalTableProps> = ({
                       {isNeedsCorrection && (
                         <button
                           onClick={() => onReviewJournal(journal)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#E11D48] text-white text-xs font-semibold hover:bg-rose-700 transition-colors shadow-xs active:scale-95"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#FFF1F2] hover:bg-rose-100 text-[#E11D48] text-xs font-semibold border border-rose-200 transition-colors active:scale-95"
+                          title="Menunggu perbaikan dari guru"
                         >
-                          <span className="material-symbols-outlined text-[16px]">
-                            priority_high
-                          </span>
-                          <span>Review Sekarang</span>
+                          <span className="material-symbols-outlined text-[16px]">hourglass_top</span>
+                          <span>Menunggu Guru</span>
                         </button>
                       )}
                       {isSubmitted && (
                         <button
                           onClick={() => onReviewJournal(journal)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#9E1B32] hover:bg-[#800E26] text-white text-xs font-semibold transition-colors shadow-xs active:scale-95"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#00685f] hover:bg-[#008378] text-white text-xs font-semibold transition-colors shadow-xs active:scale-95"
                         >
                           <span className="material-symbols-outlined text-[16px]">
                             rate_review
@@ -282,12 +281,13 @@ export const JournalTable: React.FC<JournalTableProps> = ({
                         </button>
                       )}
                       {isReviewed && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#f2f3ff] text-slate-500 text-xs font-medium border border-slate-200">
-                          <span className="material-symbols-outlined text-[16px] text-[#059669]">
-                            check
-                          </span>
-                          <span>Selesai</span>
-                        </span>
+                        <button
+                          onClick={() => onReviewJournal(journal)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#f2f3ff] hover:bg-slate-200 text-slate-600 text-xs font-medium border border-slate-200 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[16px] text-[#059669]">check</span>
+                          <span>Selesai • Detail</span>
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -301,11 +301,11 @@ export const JournalTable: React.FC<JournalTableProps> = ({
       {/* Table Footer */}
       <div className="pt-4 mt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2">
         <span className="text-xs text-slate-500">
-          Menampilkan {filteredJournals.length} dari {journals.length} jurnal tercatat hari ini
+          Menampilkan {filteredJournals.length} dari {journals.length} jurnal tercatat
         </span>
         <button
           onClick={onViewAllJournals}
-          className="text-xs font-bold text-[#9E1B32] hover:text-[#800E26] flex items-center gap-1 transition-colors"
+          className="text-xs font-bold text-[#00685f] hover:text-[#008378] flex items-center gap-1 transition-colors"
         >
           <span>Buka Seluruh Jurnal Laboratorium</span>
           <span className="material-symbols-outlined text-[16px]">arrow_forward</span>

@@ -23,19 +23,17 @@ export const LabHoursChart: React.FC<LabHoursChartProps> = ({ allocations }) => 
   const xPositions = [40, 150, 260, 370, 480];
 
   return (
-    <div className="bg-white rounded-[2px] p-5 shadow-xs border border-slate-300">
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-[#E2E8F0]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#9E1B32] text-[20px]">
+          <span className="material-symbols-outlined text-[#00687a] text-[20px]">
             bar_chart
           </span>
-          <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-sm sm:text-base text-[#131b2e] tracking-tight">
+          <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-base text-[#131b2e]">
             Sebaran Alokasi Jam Laboratorium (Pekan Ini)
           </h3>
         </div>
-        <span className="text-xs text-slate-700 font-mono font-bold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-[2px]">
-          TOTAL: 46 JAM
-        </span>
+        <span className="text-xs text-slate-500 font-medium">Total 46 Jam Praktikum</span>
       </div>
 
       {/* SVG Bar Chart */}
@@ -46,9 +44,9 @@ export const LabHoursChart: React.FC<LabHoursChartProps> = ({ allocations }) => 
           viewBox="0 0 600 130"
         >
           {/* Grid lines */}
-          <line x1="0" y1="100" x2="600" y2="100" stroke="#CBD5E1" strokeDasharray="3" />
-          <line x1="0" y1="60" x2="600" y2="60" stroke="#E2E8F0" strokeDasharray="3" />
-          <line x1="0" y1="20" x2="600" y2="20" stroke="#E2E8F0" strokeDasharray="3" />
+          <line x1="0" y1="100" x2="600" y2="100" stroke="#E2E8F0" strokeDasharray="4" />
+          <line x1="0" y1="60" x2="600" y2="60" stroke="#E2E8F0" strokeDasharray="4" />
+          <line x1="0" y1="20" x2="600" y2="20" stroke="#E2E8F0" strokeDasharray="4" />
 
           {allocations.map((item, index) => {
             const x = xPositions[index] || 40 + index * 110;
@@ -70,19 +68,19 @@ export const LabHoursChart: React.FC<LabHoursChartProps> = ({ allocations }) => 
                   width="60"
                   height="110"
                   fill="transparent"
-                  className="hover:fill-slate-100/60 transition-colors"
+                  className="hover:fill-slate-50/70 transition-colors"
                 />
 
-                {/* Bar - Sharp rectangular column rx=0 */}
+                {/* Bar */}
                 <rect
                   x={x}
                   y={barY}
                   width="30"
                   height={barHeight}
-                  rx="0"
-                  fill={isToday ? '#9E1B32' : '#BE123C'}
-                  opacity={isToday ? 1 : 0.75}
-                  className="transition-all hover:opacity-100 origin-bottom"
+                  rx="4"
+                  fill={isToday ? '#00687a' : '#00685f'}
+                  opacity={isToday ? 1 : 0.85}
+                  className="transition-all hover:opacity-100 hover:scale-y-102 origin-bottom"
                 />
 
                 {/* Day label */}
@@ -92,8 +90,8 @@ export const LabHoursChart: React.FC<LabHoursChartProps> = ({ allocations }) => 
                   textAnchor="middle"
                   fontFamily="Inter"
                   fontSize="12"
-                  fontWeight={isToday ? '700' : '600'}
-                  fill={isToday ? '#9E1B32' : '#475569'}
+                  fontWeight={isToday ? '700' : '500'}
+                  fill={isToday ? '#00687a' : '#64748B'}
                 >
                   {item.day}
                 </text>
@@ -106,7 +104,7 @@ export const LabHoursChart: React.FC<LabHoursChartProps> = ({ allocations }) => 
                   fontFamily="Inter"
                   fontSize="12"
                   fontWeight="700"
-                  fill={isToday ? '#9E1B32' : '#BE123C'}
+                  fill={isToday ? '#00687a' : '#00685f'}
                 >
                   {item.hours}j
                 </text>
@@ -117,8 +115,8 @@ export const LabHoursChart: React.FC<LabHoursChartProps> = ({ allocations }) => 
 
         {/* Hover Tooltip display */}
         {hoveredDay && (
-          <div className="absolute top-2 right-4 bg-slate-900 text-white text-xs px-2.5 py-1.5 rounded-[2px] border border-slate-700 shadow-md font-mono pointer-events-none">
-            <span className="font-bold text-[#FDA4AF]">{hoveredDay.day}: </span>
+          <div className="absolute top-2 right-4 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg pointer-events-none animate-in fade-in duration-150">
+            <span className="font-bold text-[#89f5e7]">{hoveredDay.day}: </span>
             <span>{hoveredDay.hours} Jam Praktikum ({hoveredDay.details})</span>
           </div>
         )}

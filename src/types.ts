@@ -1,90 +1,74 @@
 export type LabCode = 'BIO' | 'FIS' | 'KIM' | 'COM' | 'BSM';
 
-export type JournalStatus = 'DRAFT' | 'NEEDS_CORRECTION' | 'SUBMITTED' | 'REVIEWED';
+export type Role = 'ADMIN' | 'LABORAN' | 'GURU';
 
-export type RoomStatus = 'Insiden' | 'Berjalan' | 'Praktikum' | 'Standby' | 'Sterilisasi';
-
-export interface Teacher {
-  id: string;
-  teacherCode: string; // e.g. "ML", "KP1", "SK", "GUR-IPA-01"
-  name: string; // e.g. "Drs. Bambang Haryanto, M.Pd."
-  nip?: string;
-  subject: string; // e.g. "Biologi & Ilmu Pengetahuan Alam"
-  primaryLab: LabCode;
-  status: 'ACTIVE' | 'INACTIVE';
-  phone?: string;
-  avatarColor: string;
-  joinedDate: string;
+export interface AuthUser {
+  id: number;
+  code: string;
+  name: string;
+  role: Role;
 }
 
+export interface Lab {
+  id: number;
+  code: string;
+  roomCode: string;
+  name: string;
+  school: string;
+}
+
+export type JournalStatus = 'DRAFT' | 'SUBMITTED' | 'REVIEWED' | 'NEEDS_CORRECTION';
+
 export interface JournalReview {
-  id: number | string;
-  journalId: number | string;
-  reviewerRole: 'LABORAN' | 'ADMIN' | 'GURU';
+  id: number;
+  journalId: number;
+  reviewerId: number;
   reviewerName: string;
-  reviewerCode?: string;
-  status: JournalStatus;
+  reviewerRole: Role;
+  status: 'SUBMITTED' | 'REVIEWED' | 'NEEDS_CORRECTION';
   notes: string;
+  sopComplied: boolean | null;
   createdAt: string;
 }
 
-export interface LabSchedule {
-  id: number | string;
-  labCode: LabCode;
-  dayOfWeek: string;
-  date?: string;
-  timeSlot: string;
+export interface ScheduleItem {
+  scheduleId: number;
+  date: string;
+  dayName: string;
+  isToday: boolean;
+  startTime: string;
+  endTime: string;
   className: string;
+  activity: string;
   subject: string;
-  teacherCode?: string;
-  teacherName: string;
-  topic: string;
+  isMine: boolean;
 }
 
-export interface LabQRCode {
-  id: number | string;
+export interface QRCodeInfo {
+  id: number;
   token: string;
-  labCode: LabCode;
+  labId: number;
+  labCode: string;
   labName: string;
-  title: string;
-  schoolName?: string;
+  createdAt: string;
+  url: string;
 }
-
-export type InventoryCategory =
-  | 'Optik & Mikroskopi'
-  | 'Elektronika & Alat Ukur'
-  | 'Alat Gelas & Kimia'
-  | 'Komputer & Jaringan'
-  | 'Audio & Multimedia'
-  | 'Peralatan Keselamatan'
-  | 'Peraga & Model Anatomi'
-  | 'Bahan & Reagen';
-
-export type InventoryCondition = 'Baik' | 'Rusak Ringan' | 'Rusak Berat' | 'Perlu Kalibrasi';
-
-export type InventoryStatus = 'Tersedia' | 'Sedang Digunakan' | 'Dalam Perbaikan' | 'Dipinjam';
 
 export interface InventoryItem {
-  id: string;
-  itemCode: string; // e.g. "BIO-MC-001"
-  name: string; // e.g. "Mikroskop Binokuler Olympus CX23"
-  brandModel: string; // e.g. "Olympus CX23 LED"
-  labCode: LabCode;
-  category: InventoryCategory;
-  quantityTotal: number;
-  quantityGood: number;
-  quantityMinorDamage: number;
-  quantityHeavyDamage: number;
-  status: InventoryStatus;
-  storageLocation: string; // e.g. "Lemari A - Rak 2"
-  procurementYear: number;
-  fundingSource: 'Dana BOS' | 'DAK Fisik' | 'Komite Sekolah' | 'Bantuan Pemerintah' | 'Hibah Perusahaan';
-  specs: string;
-  unit: string; // "Unit", "Set", "Buah", "Paket"
-  lastInspectedAt: string;
-  inspectedBy: string;
-  notes?: string;
+  id: number;
+  code: string;
+  name: string;
+  category: 'ALAT' | 'REAGEN' | 'BAHAN';
+  labId: number | null;
+  labCode: string | null;
+  quantity: number;
+  minStock: number;
+  condition: 'BAIK' | 'PERLU_PERBAIKAN' | 'RUSAK';
+  storageLocation: string;
+  unitValue: number;
 }
+
+export type RoomStatus = 'Insiden' | 'Berjalan' | 'Praktikum' | 'Standby' | 'Sterilisasi';
 
 export interface LabRoom {
   id: string;
@@ -109,27 +93,30 @@ export interface JournalEntry {
   code: string;
   session: string;
   time: string;
-  labCode: LabCode;
+  labCode: string;
   labName: string;
-  teacherCode?: string;
   teacherName: string;
   teacherInitials: string;
   teacherAvatarColor: string;
   className: string;
-  subject?: string;
   topic: string;
   status: JournalStatus;
   notes?: string;
   studentsCount: number;
-  conditionBefore?: string;
-  conditionAfter?: string;
-  issueType?: string;
-  issueDescription?: string;
   sopComplied: boolean;
   incidentReported?: string;
-  reviews?: JournalReview[];
+  // Field tambahan dari backend
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  labId?: number;
+  teacherId?: number;
+  teacherCode?: string;
+  subject?: string;
   createdAt?: string;
   updatedAt?: string;
+  submittedAt?: string | null;
+  reviews?: JournalReview[];
 }
 
 export interface IncidentItem {
@@ -140,7 +127,7 @@ export interface IncidentItem {
   description: string;
   reporter: string;
   className: string;
-  labCode: LabCode;
+  labCode: string;
   photoUrl: string;
   photoAlt: string;
   status: 'Open' | 'Disposed' | 'Resolved';
